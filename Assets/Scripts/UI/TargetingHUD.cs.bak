@@ -1,0 +1,395 @@
+using UnityEngine;
+using UnityEngine.UI;
+using System.Collections.Generic;
+
+namespace StarTrekCombat
+{
+    /// <summary>
+    /// Center-screen HUD with per-target lock arcs and health/shield circles.
+    /// When enemy ships are inside the center scanning circle, each gets:
+    /// - A green lock arc that draws over 2 seconds (around the enemy's screen position)
+    /// - After lock complete: left half red = hull, right half blue = shield, gray = depleted
+    /// - Red bracket markers hidden when distance < 80 units (too close to see)
+    /// </summary>
+    public class TargetingHUD
+    {
+        private HUDManager _mgr;
+        private TargetingSystem _targeting;
+        private Camera _cam;
+
+        // Center scanning circle (small, at screen center)
+        private GameObject _scanCircleObj;
+        private Image _scanCircleImg;
+
+        // Lock mode text
+        private Text _lockModeText;
+
+        // Sticky lock indicator
+        private Text _stickyLockText;
+
+        // Per-target tracking: each locked target gets its own circle container
+        private RectTransform _markerContainer;
+        private List<TargetCircle> _targetCircles = new List<TargetCircle>();
+
+        private float _centerCircleSize = 200f;
+        private float _targetCircleSize = 40f;
+
+        private struct TargetCircle
+        {
+            public GameObject container;
+            public Image lockArcImg;       // green, fills 0->1 over 2s
+            public Image hullArcImg;        // left half, red
+            public Image shieldArcImg;      // right half, blue
+            public Image grayBgImg;          // gray background ring
+            public GameObject bracketObj;   // red bracket marker
+            public Text infoText;            // distance + HP% text
+            public Transform trackedTarget;
+        }
+
+        public static TargetingHUD Create(Transform parent, HUDManager mgr)
+        {
+            var hud = new TargetingHUD();
+            hud.Init(parent, mgr);
+            return hud;
+        }
+
+        private void Init(Transform parent, HUDManager mgr)
+        {
+            _mgr = mgr;
+            _targeting = mgr.targeting;
+
+            // Center scanning circle (thin ring at center of screen)
+            _scanCircleObj = new GameObject("ScanCircle", typeof(RectTransform), typeof(Image));
+            _scanCircleObj.transform.SetParent(parent, false);
+            var scRt = _scanCircleObj.GetComponent<RectTransform>();
+            scRt.anchorMin = new Vector2(0.5f, 0.5f);
+            scRt.anchorMax = new Vector2(0.5f, 0.5f);
+            scRt.anchoredPosition = Vector2.zero;
+            scRt.sizeDelta = new Vector2(_centerCircleSize, _centerCircleSize);
+            _scanCircleImg = _scanCircleObj.GetComponent<Image>();
+            _scanCircleImg.sprite = CreateRingSprite();
+            _scanCircleImg.color = new Color(0.3f, 0.7f, 1f, 0f); // hidden
+            _scanCircleImg.raycastTarget = false;
+            _scanCircleImg.type = Image.Type.Simple;
+
+            // Lock mode text
+            _lockModeText = HUDManager.CreateText(parent, "LockModeText", "大范围锁定", 11, mgr.textColor);
+            _lockModeText.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+            _lockModeText.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            _lockModeText.rectTransform.anchoredPosition = new Vector2(0, -_centerCircleSize / 2 - 16);
+            _lockModeText.rectTransform.sizeDelta = new Vector2(200, 14);
+            _lockModeText.alignment = TextAnchor.UpperCenter;
+
+            // Sticky lock indicator (shows "跟踪锁定" when tracking)
+            _stickyLockText = HUDManager.CreateText(parent, "StickyLockText", "", 12, new Color(1f, 0.5f, 0.2f, 0.9f), TextAnchor.UpperCenter, FontStyle.Bold);
+            _stickyLockText.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+            _stickyLockText.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            _stickyLockText.rectTransform.anchoredPosition = new Vector2(0, _centerCircleSize / 2 + 4);
+            _stickyLockText.rectTransform.sizeDelta = new Vector2(200, 16);
+            _stickyLockText.alignment = TextAnchor.UpperCenter;
+
+            // Marker container for all target circles
+            var mcObj = new GameObject("MarkerContainer", typeof(RectTransform));
+            mcObj.transform.SetParent(parent, false);
+            _markerContainer = mcObj.GetComponent<RectTransform>();
+            _markerContainer.anchorMin = Vector2.zero;
+            _markerContainer.anchorMax = Vector2.one;
+            _markerContainer.offsetMin = Vector2.zero;
+            _markerContainer.offsetMax = Vector2.zero;
+        }
+
+        private static Sprite _ringSprite;
+        private static Sprite CreateRingSprite()
+        {
+            if (_ringSprite != null) return _ringSprite;
+
+            int size = 128;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Bilinear;
+            Color[] pixels = new Color[size * size];
+            Vector2 center = new Vector2(size / 2f, size / 2f);
+            float innerR = size / 2f - 6f;
+            float outerR = size / 2f - 0f;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dist = Vector2.Distance(new Vector2(x, y), center);
+                    float alpha = 0f;
+                    if (dist >= innerR && dist <= outerR) alpha = 1f;
+                    pixels[y * size + x] = new Color(1, 1, 1, alpha);
+                }
+            }
+            tex.SetPixels(pixels);
+            tex.Apply();
+            _ringSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
+            return _ringSprite;
+        }
+
+        private static Sprite _bracketSprite;
+        private static Sprite CreateBracketSprite()
+        {
+            if (_bracketSprite != null) return _bracketSprite;
+
+            int size = 32;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            Color[] pixels = new Color[size * size];
+            for (int i = 0; i < pixels.Length; i++) pixels[i] = new Color(1, 1, 1, 0);
+            for (int i = 0; i < size; i++)
+            {
+                pixels[(size - 1) * size + i] = Color.white;
+                pixels[i * size + (size - 1)] = Color.white;
+            }
+            tex.SetPixels(pixels);
+            tex.Apply();
+            _bracketSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
+            return _bracketSprite;
+        }
+
+        private TargetCircle CreateTargetCircle()
+        {
+            var tc = new TargetCircle();
+
+            tc.container = new GameObject("TargetCircle", typeof(RectTransform));
+            tc.container.transform.SetParent(_markerContainer, false);
+            var rt = tc.container.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(0f, 0f);
+            rt.sizeDelta = new Vector2(_targetCircleSize, _targetCircleSize);
+
+            // Gray background ring (full circle)
+            tc.grayBgImg = CreateRingImage(tc.container.transform, "GrayBg", new Color(0.5f, 0.5f, 0.5f, 0.3f));
+            tc.grayBgImg.gameObject.SetActive(false);
+
+            // Hull arc (left half, red) — counter-clockwise from top
+            tc.hullArcImg = CreateRingImage(tc.container.transform, "HullArc", new Color(1f, 0.2f, 0.2f, 0.85f));
+            tc.hullArcImg.fillMethod = Image.FillMethod.Radial360;
+            tc.hullArcImg.fillOrigin = 0;
+            tc.hullArcImg.fillClockwise = false;
+            tc.hullArcImg.gameObject.SetActive(false);
+
+            // Shield arc (right half, blue) — clockwise from top
+            tc.shieldArcImg = CreateRingImage(tc.container.transform, "ShieldArc", new Color(0.3f, 0.6f, 1f, 0.85f));
+            tc.shieldArcImg.fillMethod = Image.FillMethod.Radial360;
+            tc.shieldArcImg.fillOrigin = 0;
+            tc.shieldArcImg.fillClockwise = true;
+            tc.shieldArcImg.gameObject.SetActive(false);
+
+            // Green lock arc
+            var lockObj = new GameObject("LockArc", typeof(RectTransform), typeof(Image));
+            lockObj.transform.SetParent(tc.container.transform, false);
+            var laRt = lockObj.GetComponent<RectTransform>();
+            laRt.anchorMin = Vector2.zero;
+            laRt.anchorMax = Vector2.one;
+            laRt.offsetMin = Vector2.zero;
+            laRt.offsetMax = Vector2.zero;
+            tc.lockArcImg = lockObj.GetComponent<Image>();
+            tc.lockArcImg.sprite = CreateRingSprite();
+            tc.lockArcImg.type = Image.Type.Filled;
+            tc.lockArcImg.fillMethod = Image.FillMethod.Radial360;
+            tc.lockArcImg.fillOrigin = 0;
+            tc.lockArcImg.fillClockwise = true;
+            tc.lockArcImg.fillAmount = 0f;
+            tc.lockArcImg.color = new Color(0.2f, 1f, 0.3f, 0.9f);
+            tc.lockArcImg.raycastTarget = false;
+            tc.lockArcImg.gameObject.SetActive(false);
+
+            // Bracket marker (red square)
+            var bracketObj = new GameObject("Bracket", typeof(RectTransform), typeof(Image));
+            bracketObj.transform.SetParent(tc.container.transform, false);
+            var bRt = bracketObj.GetComponent<RectTransform>();
+            bRt.anchorMin = new Vector2(0.5f, 0.5f);
+            bRt.anchorMax = new Vector2(0.5f, 0.5f);
+            bRt.sizeDelta = new Vector2(_targetCircleSize * 0.9f, _targetCircleSize * 0.9f);
+            var bImg = bracketObj.GetComponent<Image>();
+            bImg.sprite = CreateBracketSprite();
+            bImg.color = new Color(1f, 0.4f, 0.2f, 0.8f);
+            bImg.raycastTarget = false;
+            tc.bracketObj = bracketObj;
+
+            // Info text (distance + HP% + shield%)
+            tc.infoText = HUDManager.CreateText(tc.container.transform, "InfoText", "", 10, new Color(0.8f, 0.9f, 1f, 0.9f), TextAnchor.UpperCenter);
+            var itRt = tc.infoText.rectTransform;
+            itRt.anchorMin = new Vector2(0.5f, 0f);
+            itRt.anchorMax = new Vector2(0.5f, 0f);
+            itRt.pivot = new Vector2(0.5f, 1f);
+            itRt.anchoredPosition = new Vector2(0, -_targetCircleSize * 0.5f - 4f);
+            itRt.sizeDelta = new Vector2(120, 14);
+
+            return tc;
+        }
+
+        private static Image CreateRingImage(Transform parent, string name, Color color)
+        {
+            var obj = new GameObject(name, typeof(RectTransform), typeof(Image));
+            obj.transform.SetParent(parent, false);
+            var rt = obj.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            var img = obj.GetComponent<Image>();
+            img.sprite = CreateRingSprite();
+            img.type = Image.Type.Filled;
+            img.fillMethod = Image.FillMethod.Radial360;
+            img.fillOrigin = 0;
+            img.fillClockwise = true;
+            img.fillAmount = 1f;
+            img.color = color;
+            img.raycastTarget = false;
+            return img;
+        }
+
+        public void UpdateHUD()
+        {
+            _targeting = _mgr.targeting;
+
+            if (_targeting == null) return;
+            if (_cam == null) _cam = Camera.main;
+            if (_cam == null) return;
+
+            // Update scan circle size based on lock mode
+            float radius = _targeting.GetCurrentScreenRadius();
+            _centerCircleSize = radius * 2f;
+            _scanCircleObj.GetComponent<RectTransform>().sizeDelta = new Vector2(_centerCircleSize, _centerCircleSize);
+
+            // Lock mode label
+            string mode = _targeting.lockMode == LockMode.WideArea ? "大范围锁定" : "精准锁定";
+            _lockModeText.text = mode;
+            _lockModeText.color = mode == "精准锁定" ? _mgr.warningColor : _mgr.textColor;
+            _lockModeText.rectTransform.anchoredPosition = new Vector2(0, -radius - 16);
+
+            // Sticky lock indicator
+            if (_targeting.isStickyLocked)
+            {
+                _stickyLockText.text = "⚡ 跟踪锁定";
+                _stickyLockText.color = new Color(1f, 0.5f, 0.2f, 0.95f);
+            }
+            else
+            {
+                _stickyLockText.text = "";
+            }
+            _stickyLockText.rectTransform.anchoredPosition = new Vector2(0, radius + 4);
+
+            // Get locked targets
+            var lockedTargets = _targeting.GetLockedTargets();
+
+            // Ensure enough target circles
+            while (_targetCircles.Count < lockedTargets.Count)
+            {
+                _targetCircles.Add(CreateTargetCircle());
+            }
+
+            // Update each target circle
+            for (int i = 0; i < _targetCircles.Count; i++)
+            {
+                if (i < lockedTargets.Count && lockedTargets[i] != null)
+                {
+                    var target = lockedTargets[i];
+                    Vector3 screenPos = _cam.WorldToScreenPoint(target.position);
+
+                    if (screenPos.z > 0f)
+                    {
+                        _targetCircles[i].container.SetActive(true);
+                        var rt = _targetCircles[i].container.GetComponent<RectTransform>();
+                        rt.position = new Vector3(screenPos.x, screenPos.y, 0);
+
+                        // Scale by distance — smaller when farther
+                        float dist = Vector3.Distance(_cam.transform.position, target.position);
+                        float scale = Mathf.Clamp(400f / dist, 0.4f, 2.5f);
+                        rt.sizeDelta = new Vector2(_targetCircleSize * scale, _targetCircleSize * scale);
+
+                        // Bracket — only show when distance > 2000
+                        if (dist > 2000f)
+                        {
+                            _targetCircles[i].bracketObj.SetActive(true);
+                            var bRt = _targetCircles[i].bracketObj.GetComponent<RectTransform>();
+                            bRt.sizeDelta = new Vector2(_targetCircleSize * 0.9f * scale, _targetCircleSize * 0.9f * scale);
+                            bool isPrimary = target == _targeting.primaryTarget;
+                            var bImg = _targetCircles[i].bracketObj.GetComponent<Image>();
+                            bImg.color = isPrimary ? new Color(1f, 0.3f, 0.3f, 0.9f) : new Color(1f, 0.6f, 0.3f, 0.6f);
+                        }
+                        else
+                        {
+                            _targetCircles[i].bracketObj.SetActive(false);
+                        }
+
+                        // Info text: distance + HP%/shield% — only show after lock complete
+                        bool isPrimaryTarget = (target == _targeting.primaryTarget);
+                        bool isLocked = _targeting.IsLockComplete;
+                        var targetHealth = target.GetComponent<ShipHealth>();
+                        float hullPct = targetHealth != null ? targetHealth.HullPercent : 0f;
+                        float shieldPct = targetHealth != null ? targetHealth.ShieldPercent : 0f;
+                        if (isPrimaryTarget && isLocked)
+                        {
+                            _targetCircles[i].infoText.gameObject.SetActive(true);
+                            _targetCircles[i].infoText.text = $"{dist:F0}m | 船体{hullPct * 100f:F0}% | 护盾{shieldPct * 100f:F0}%";
+                            _targetCircles[i].infoText.color = new Color(0.9f, 0.95f, 1f, 0.95f);
+                        }
+                        else
+                        {
+                            _targetCircles[i].infoText.gameObject.SetActive(false);
+                        }
+
+                        // Lock arc — draws green over 2 seconds (primary target only)
+                        float lockProgress = _targeting.lockProgress;
+
+                        if (isPrimaryTarget && !isLocked && lockProgress > 0f)
+                        {
+                            _targetCircles[i].lockArcImg.gameObject.SetActive(true);
+                            _targetCircles[i].lockArcImg.fillAmount = lockProgress;
+                        }
+                        else
+                        {
+                            _targetCircles[i].lockArcImg.gameObject.SetActive(false);
+                        }
+
+                        // Health/shield circle — the circle IS the health bar
+                        // Left half = hull (red), right half = shield (blue)
+                        // Gray fills in as portions are depleted
+                        // Full circle = red(180°) + blue(180°), gray replaces depleted portions
+                        if (isPrimaryTarget && isLocked)
+                        {
+                            // Gray background = full circle, always visible (represents "lost" HP)
+                            _targetCircles[i].grayBgImg.gameObject.SetActive(true);
+                            _targetCircles[i].grayBgImg.fillAmount = 1f;
+                            _targetCircles[i].grayBgImg.color = new Color(0.3f, 0.3f, 0.3f, 0.5f);
+
+                            // Hull arc (red) on left half — shrinks as hull depletes
+                            _targetCircles[i].hullArcImg.gameObject.SetActive(true);
+                            _targetCircles[i].hullArcImg.fillAmount = hullPct * 0.5f;
+                            _targetCircles[i].hullArcImg.color = new Color(1f, 0.2f, 0.2f, 0.85f);
+
+                            // Shield arc (blue) on right half — shrinks as shield depletes
+                            _targetCircles[i].shieldArcImg.gameObject.SetActive(true);
+                            _targetCircles[i].shieldArcImg.fillAmount = shieldPct * 0.5f;
+                            _targetCircles[i].shieldArcImg.color = new Color(0.3f, 0.6f, 1f, 0.85f);
+                        }
+                        else if (isPrimaryTarget && !isLocked)
+                        {
+                            // Locking in progress — show green arc only, no health circle yet
+                            _targetCircles[i].grayBgImg.gameObject.SetActive(false);
+                            _targetCircles[i].hullArcImg.gameObject.SetActive(false);
+                            _targetCircles[i].shieldArcImg.gameObject.SetActive(false);
+                        }
+                        else
+                        {
+                            // Non-primary targets — no health circle
+                            _targetCircles[i].grayBgImg.gameObject.SetActive(false);
+                            _targetCircles[i].hullArcImg.gameObject.SetActive(false);
+                            _targetCircles[i].shieldArcImg.gameObject.SetActive(false);
+                        }
+                    }
+                    else
+                    {
+                        _targetCircles[i].container.SetActive(false);
+                    }
+                }
+                else
+                {
+                    _targetCircles[i].container.SetActive(false);
+                }
+            }
+        }
+    }
+}

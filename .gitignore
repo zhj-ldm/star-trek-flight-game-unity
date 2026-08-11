@@ -1,0 +1,29 @@
+# Unity generated
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+
+# IDE
+.idea/
+.vs/
+.vscode/
+*.sln
+*.csproj
+*.userprefs
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Crash dumps
+mono_crash.mem.*.blob
+
+# Unity Asset Store tools
+Assets/AssetStoreTools*
+
+# Codely / editor extensions
+.codely-cli/
