@@ -1,0 +1,165 @@
+---
+AIGC:
+    Label: "1"
+    ContentProducer: 001191440300708461136T1XGW3
+    ProduceID: abc280594deb8e830e487cdb027f0632_16dc2a99954611f1b50c525400826444
+    ReservedCode1: 7Tgfyq7lCFawNsz0Ky1QWjirKpdhUzV0Zo0N9k0SysF1CQ1EpxnYL6ETV5MPRGXH+ifQW3if12KhlO4wv07kgCl8ArUXUf4/BXZKR2Of2h1URNIX09RJLCpWInsUkyDue/wMkFDN1ftMC0PBTx+SuLLQPCa/XxCtEu1F97zGWblPbGkZO26xE9aU1y8=
+    ContentPropagator: 001191440300708461136T1XGW3
+    PropagateID: abc280594deb8e830e487cdb027f0632_16dc2a99954611f1b50c525400826444
+    ReservedCode2: 7Tgfyq7lCFawNsz0Ky1QWjirKpdhUzV0Zo0N9k0SysF1CQ1EpxnYL6ETV5MPRGXH+ifQW3if12KhlO4wv07kgCl8ArUXUf4/BXZKR2Of2h1URNIX09RJLCpWInsUkyDue/wMkFDN1ftMC0PBTx+SuLLQPCa/XxCtEu1F97zGWblPbGkZO26xE9aU1y8=
+---
+
+# Star Trek Flight Simulator
+
+基于 Unity 的《星际迷航》主题太空飞行模拟器。操作逻辑借鉴 Orbiter 2016 的牛顿力学飞行模型，采用六自由度惯性飞行系统，提供旋转 / 平移双模式操控、多武器战斗、银河曲速导航及舰桥室内视角等特性。
+
+---
+
+## 操控指南
+
+### 飞行控制
+
+#### 旋转模式 ROT（默认）
+| 按键 | 功能 |
+|------|------|
+| W / S | 俯仰（机头上下） |
+| Q / E | 横滚（左右翻滚） |
+| A / D | 偏航（左右转向） |
+
+> 旋转有惯性，松开按键后飞船会继续旋转。
+
+#### 平移模式 LIN
+| 按键 | 功能 |
+|------|------|
+| C | 切换 ROT ↔ LIN 模式 |
+| W / S | 上 / 下平移 |
+| A / D | 左 / 右平移 |
+| P / L | 前 / 后平移 |
+
+#### 主引擎
+| 按键 | 功能 |
+|------|------|
+| P | 增加前进推力（从负数回到0后需松开再按才能进入正推力） |
+| L | 增加反向推力（从正数回到0后需松开再按才能进入负推力） |
+
+#### 稳定与制动
+| 按键 | 功能 |
+|------|------|
+| R | 自动稳定（2秒内角速度衰减至零，任意手动输入取消） |
+| F | 完全停止（5秒内速度+角速度归零，任意输入取消） |
+| O | 停靠（靠近空间站时瞬间停止） |
+
+---
+
+### 武器与战斗
+
+| 按键 | 功能 |
+|------|------|
+| Space | 相位炮（持续开火，6秒发射/2秒充能） |
+| M | 鱼雷（每次发射2枚，追踪制导） |
+| N | 脉冲炮（持续快速射击，2秒发射/4秒充能） |
+| K | 护盾开关 |
+| Tab | 切换锁定模式（大范围/精准） |
+| ` | 取消锁定 |
+
+---
+
+### 摄像机视角
+
+| 按键 | 功能 |
+|------|------|
+| I | 切换舰桥室内视角 ↔ 第三人称外部视角 |
+| B | 切换战术上帝视角 ↔ 第三人称视角 |
+| / | 重置摄像机视角 |
+| 鼠标拖动 | 自由环顾（第三人称和舰桥视角均可用） |
+| 滚轮 | 缩放远近 |
+| ' | 切换跟随模式（硬性/柔性跟随） |
+
+#### 舰桥室内视角
+- 按 I 进入舰桥室内视角，飞船外部模型隐藏，显示舰桥内部
+- 鼠标拖动可环顾舰桥四周
+- 方向键 ↑↓←→ 可微调摄像机位置（前后左右）
+- 按 / 重置视角
+- 再按 I 退出回到第三人称
+
+---
+
+### 导航
+
+| 按键 | 功能 |
+|------|------|
+| Z | 银河曲速（沿船头方向高速飞行，再按 Z 停止） |
+| G | 打开/关闭星系图 |
+
+#### 星系图
+- 滚轮缩放，拖拽平移
+- 点击星球查看信息
+- 点击星球后可选择自动曲速导航（仅对准方向，需手动按 Z 启动曲速）
+- 点击恒星可直接曲速导航
+
+---
+
+### 穿梭机
+
+| 按键 | 功能 |
+|------|------|
+| 9 | 部署/召回/取消召回穿梭机 |
+| 8 | 切换视角（母舰 ↔ 穿梭机，召回时也可用） |
+
+---
+
+### 调试
+
+| 按键 | 功能 |
+|------|------|
+| [ | 降低场景灯光亮度 |
+| ] | 提高场景灯光亮度 |
+
+---
+
+### 编辑器预览
+
+| 菜单 | 功能 |
+|------|------|
+| Tools > Star Trek > 预览舰桥视角 (Cmd+L) | 编辑器内预览舰桥视角，选中 CameraAnchor_Bridge 调整位置/朝向，Game View 实时更新 |
+
+---
+
+## 模型替换说明
+
+### 背景
+
+本项目在开源时，`Assets/Models` 目录下的 3D 模型文件（.glb / .fbx）均为第三方版权内容，来源包括 Sketchfab 等平台。为避免侵权风险，已将所有模型文件替换为**最小合法空壳**。
+
+### 替换内容
+
+| 原始文件 | 大小 | 替换后 |
+|---|---|---|
+| `bridge.glb` | 120.0 MB | 48 bytes |
+| `defiant.glb` | 34.5 MB | 48 bytes |
+| `ds9.glb` | 7.7 MB | 48 bytes |
+| `ds9_space_station.glb` | 8.4 MB | 48 bytes |
+| `earthspacedock.glb` | 16.8 MB | 48 bytes |
+| `enterprise_ncc_1701_d.glb` | 27.7 MB | 48 bytes |
+| `enterprisexi.glb` | 20.3 MB | 48 bytes |
+| `excelsior.glb` | 25.0 MB | 48 bytes |
+| `starbase375.glb` | 7.7 MB | 48 bytes |
+| `uss_voyager.glb` | 16.8 MB | 48 bytes |
+| `EnemyShips/star_trek_-_cardassian_galor.glb` | 7.1 MB | 48 bytes |
+| `EnemyShips/star_trek_klingon_kvek_class.glb` | 1.4 MB | 48 bytes |
+| `EnemyShips/star_trek_online__romulan_valdore.glb` | 2.0 MB | 48 bytes |
+| `enterprisexi/source/Sketchfab_2025_08_05_19_20_07.fbx` | 1.2 MB | 已删除 |
+
+**合计：约 297 MB → 624 bytes**
+
+### 技术说明
+
+替换后的 .glb 文件均为符合 glTF 2.0 规范的合法文件，仅包含 `asset` 元信息声明，不含任何网格、纹理、动画等数据。Unity 及其他 glTF 兼容引擎可正常加载，但场景为空。
+
+### 如何恢复模型
+
+- 部分模型来自 Sketchfab，文件名前缀可追溯
+- `enterprisexi/source/` 目录下的 .fbx 原始文件已移除
+
+如需恢复，请从原始来源重新下载模型，放入对应路径即可。
+*（内容由AI生成，仅供参考）*
