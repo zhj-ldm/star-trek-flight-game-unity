@@ -1,18 +1,11 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: abc280594deb8e830e487cdb027f0632_16dc2a99954611f1b50c525400826444
-    ReservedCode1: 7Tgfyq7lCFawNsz0Ky1QWjirKpdhUzV0Zo0N9k0SysF1CQ1EpxnYL6ETV5MPRGXH+ifQW3if12KhlO4wv07kgCl8ArUXUf4/BXZKR2Of2h1URNIX09RJLCpWInsUkyDue/wMkFDN1ftMC0PBTx+SuLLQPCa/XxCtEu1F97zGWblPbGkZO26xE9aU1y8=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: abc280594deb8e830e487cdb027f0632_16dc2a99954611f1b50c525400826444
-    ReservedCode2: 7Tgfyq7lCFawNsz0Ky1QWjirKpdhUzV0Zo0N9k0SysF1CQ1EpxnYL6ETV5MPRGXH+ifQW3if12KhlO4wv07kgCl8ArUXUf4/BXZKR2Of2h1URNIX09RJLCpWInsUkyDue/wMkFDN1ftMC0PBTx+SuLLQPCa/XxCtEu1F97zGWblPbGkZO26xE9aU1y8=
----
+
 
 # Star Trek Flight Simulator
+本项目为非官方粉丝作品，与 CBS Studios Inc. / Paramount Global 无任何关联。Star Trek 及相关名称、标志均为其各自权利持有人的商标或注册商标。
+Assets/Models 目录下的 3D 模型文件已替换为合法空壳，原始版权归属于各自原作者，本项目不主张任何所有权。  
 
 基于 Unity 的《星际迷航》主题太空飞行模拟器。操作逻辑借鉴 Orbiter 2016 的牛顿力学飞行模型，采用六自由度惯性飞行系统，提供旋转 / 平移双模式操控、多武器战斗、银河曲速导航及舰桥室内视角等特性。
-
+ 致敬星际迷航tng ds9 voy
 ---
 
 ## 操控指南
@@ -158,8 +151,8 @@ AIGC:
 
 ### 如何恢复模型
 
-- 部分模型来自 Sketchfab，文件名前缀可追溯
-- `enterprisexi/source/` 目录下的 .fbx 原始文件已移除
+- 模型来自 Sketchfab，文件名前缀可追溯
+
 
 如需恢复，请从原始来源重新下载模型，放入对应路径即可。
-*（内容由AI生成，仅供参考）*
+
